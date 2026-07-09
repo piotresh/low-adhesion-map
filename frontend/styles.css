@@ -1,0 +1,698 @@
+/* ──Low adhesion dashboard───────────────────────────────────────────── */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  width: 100%;
+  background: #f2f2f2;
+  font-family: 'DM Sans', Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  overflow: hidden;
+}
+
+/* ─── CONTAINER ────────────────────────────────────────────────── */
+#container {
+  position: fixed;
+  inset: 0;
+  background: #f2f2f2;
+}
+
+/* ─── LEFT PANEL ── fixed, always visible ──────────────────────── */
+.left-column {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  bottom: 14px;
+  width: 252px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  z-index: 10;
+}
+.left-column::-webkit-scrollbar { display: none; }
+
+/* ─── MAP AREA ─────────────────────────────────────────────────── */
+.map-area {
+  position: absolute;
+  top: 14px;
+  left: 280px;
+  right: 14px;
+  bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: right 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* ─── MAP ──────────────────────────────────────────────────────── */
+#map {
+  flex: 1;
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+  z-index: 1;
+  min-height: 0;
+}
+
+/* ─── TIMELINE ─────────────────────────────────────────────────── */
+#timeline-overlay {
+  height: 110px;
+  flex-shrink: 0;
+  pointer-events: all;
+  z-index: 100;
+  background: #ffffff;
+  border-radius: 22px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+}
+#timeline-overlay svg { display: block; }
+#timeline-overlay .domain { display: none; }
+#timeline-overlay .tick line { display: none; }
+#timeline-overlay .tick text {
+  font-family: 'DM Mono', monospace !important;
+  font-size: 9px !important;
+  fill: #9ca3af !important;
+  letter-spacing: 0.03em;
+}
+#timeline-overlay .selection {
+  fill: rgba(29, 78, 216, 0.10) !important;
+  stroke: #1d4ed8 !important;
+  stroke-width: 1.5px !important;
+}
+#timeline-overlay .handle {
+  fill: #1d4ed8 !important;
+  stroke: #fff !important;
+  stroke-width: 1.5px !important;
+}
+#timeline-overlay text.bar-label {
+  font-family: 'DM Mono', monospace !important;
+  font-size: 9px !important;
+  fill: #1d4ed8 !important;
+}
+#timeline-overlay input[type="date"] {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 3px 6px;
+  color: #374151;
+  background: #f9fafb;
+  outline: none;
+}
+
+/* ─── RIGHT PANEL ──────────────────────────────────────────────── */
+#right-panel {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  right: 14px;
+  width: 560px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 500;
+  background: transparent;
+  box-shadow: none;
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+  padding: 0;
+  box-sizing: border-box;
+  transform: translateX(calc(100% + 14px));
+  transition: transform 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  pointer-events: none;
+}
+#container.show-panel #right-panel {
+  transform: translateX(0);
+  pointer-events: auto;
+}
+#container.show-panel .map-area {
+  right: 588px;
+}
+
+/* card stack inside panel */
+#panel-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 14px;
+}
+
+/* ─── BASE CARD ────────────────────────────────────────────────── */
+.rp-card {
+  background: #ffffff;
+  border-radius: 22px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+  padding: 18px 20px;
+}
+
+.rp-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.rp-title {
+  font-family: 'DM Sans', "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #000000;
+  letter-spacing: 0.01em;
+}
+
+.rp-source {
+  font-size: 10px;
+  color: #9ca3af;
+  text-decoration: none;
+  font-weight: 400;
+}
+.rp-source:hover { color: #1d4ed8; }
+
+/* ─── GENERIC CARD ─────────────────────────────────────────────── */
+.card {
+  background: #ffffff;
+  border-radius: 22px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+  padding: 18px 20px;
+}
+.card:hover { box-shadow: 0 4px 18px rgba(0,0,0,0.11); }
+
+.logo-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0px 12px;
+  background: transparent;
+}
+.logo-card img { max-width: 100%; height: auto; display: block; }
+
+.group-title {
+  font-family: 'DM Sans', "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: #000000;
+  margin-bottom: 12px;
+}
+
+.mini-group { display: flex; flex-direction: column; gap: 8px; }
+
+/* ─── INPUTS ───────────────────────────────────────────────────── */
+.dashboard-input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  padding: 8px 32px 8px 12px;
+  background: #f3f4f6 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239ca3af'/%3E%3C/svg%3E") no-repeat right 12px center;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  color: #111111;
+  font-family: 'DM Sans', Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.dashboard-input:hover, .dashboard-input:focus { border-color: #6b7280; outline: none; }
+
+/* ─── CHECKBOXES ───────────────────────────────────────────────── */
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  font-weight: 400;
+  color: #111111;
+  cursor: pointer;
+  padding: 2px 0;
+}
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 15px; height: 15px;
+  border: 2px solid #d1d5db;
+  border-radius: 4px;
+  background: #f9fafb;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+input[type="checkbox"]:checked { background: #1d4ed8; border-color: #1d4ed8; }
+input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  top: 1px; left: 4px;
+  width: 4px; height: 7px;
+  border: 2px solid #fff;
+  border-top: none; border-left: none;
+  transform: rotate(45deg);
+}
+
+/* ─── BUTTONS ──────────────────────────────────────────────────── */
+.dashboard-button {
+  width: 100%;
+  padding: 9px 14px;
+  border-radius: 12px;
+  border: 1.5px solid #e5e7eb;
+  background: #f3f4f6;
+  color: #111111;
+  font-family: 'DM Sans', Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+}
+.dashboard-button:hover { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+
+
+#adhesion-card {
+  position: fixed;
+  bottom: 140px;
+  left: 280px;
+  z-index: 1000;
+  width: 620px;
+  padding: 0 !important;
+  overflow: hidden;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+}
+
+#adhesion-table { width: 100%; border-collapse: collapse; font-family: 'DM Sans', sans-serif; font-size: 12px; }
+
+#adhesion-table th {
+  background: #4caf50;
+  color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 10px 14px;
+  text-align: left;
+}
+
+#adhesion-table td { padding: 9px 14px; border-bottom: 1px solid rgba(0,0,0,0.08); vertical-align: middle; font-size: 12px; }
+#adhesion-table tbody tr:last-child td { border-bottom: none; }
+#adhesion-table td:nth-child(2) { font-weight: 600; }
+#adhesion-table td:nth-child(3) { font-weight: 700; }
+#adhesion-table td:nth-child(5) { font-weight: 700; text-align: right; }
+#adhesion-table td:nth-child(6) { text-align: center; }
+
+.row-excellent { background: #4caf50; color: #333; }
+.row-good      { background: #8bc34a; color: #333; }
+.row-moderate  { background: #ffeb3b; color: #333; }
+.row-poor      { background: #ff9800; color: #333; }
+.row-verypoor  { background: #f44336; color: #fff; }
+.row-extreme   { background: #212121; color: #fff; }
+.row-none      { background: #f3f4f6; color: #333; }
+
+/* ─── HIDE LEGACY CONTROLS ─────────────────────────────────────── */
+#top-left-controls { display: none; }
+
+/* ─── LEAFLET ──────────────────────────────────────────────────── */
+.custom-cluster {
+  background: rgba(0,123,255,0.85); color: white;
+  border-radius: 50%; text-align: center;
+  font-size: 12px; font-weight: bold;
+  line-height: 25px; width: 25px; height: 25px;
+  border: 2px solid white;
+}
+.custom-marker { border-radius: 50%; border: 2px solid white; width: 14px; height: 14px; }
+.custom-marker.blue { background: rgba(0,123,255,0.9); }
+.custom-marker.red  { background: red; }
+.leaflet-bottom.leaflet-left { margin-bottom: 124px; }
+
+.brake-legend {
+  background: white; padding: 8px;
+  font-size: 12px; line-height: 18px;
+  box-shadow: 0 0 4px rgba(0,0,0,0.15);
+  border-radius: 10px;
+}
+.brake-legend span {
+  display: inline-block; width: 14px; height: 14px;
+  margin-right: 5px; margin-left: 5px; border-radius: 3px;
+}
+
+/* ─── EVENT HEADER + KPI ROW ───────────────────────────────────── */
+.rp-event-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 4px 4px 0;
+}
+.rp-event-meta { display: flex; flex-direction: column; gap: 3px; }
+.rp-event-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.12em; color: #9ca3af;
+}
+.rp-event-title {
+  font-family: 'DM Sans', "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 28px; font-weight: 700; color: #000000;
+  letter-spacing: -0.02em; line-height: 1;
+}
+.rp-event-time {
+  font-family: 'DM Mono', monospace;
+  font-size: 13px; font-weight: 400; color: #6b7280; letter-spacing: 0.02em;
+}
+#close-panel {
+  cursor: pointer; font-weight: 600; font-size: 13px;
+  padding: 6px 12px; color: #9ca3af;
+  border: 1.5px solid #e5e7eb; border-radius: 10px;
+  margin-top: 2px; transition: all 0.15s; background: #fff;
+}
+#close-panel:hover { color: #111111; border-color: #9ca3af; }
+
+/* ── KPI row ── */
+.rp-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.rp-kpi-card {
+  background: #ffffff; border-radius: 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+  padding: 14px 14px 12px;
+  display: flex; flex-direction: column; gap: 6px;
+  aspect-ratio: 1 / 1; justify-content: space-between;
+  transition: box-shadow 0.2s;
+}
+.rp-kpi-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,0.11); }
+.rp-kpi-label {
+  font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af;
+}
+.rp-kpi-value {
+  font-family: 'DM Sans', "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 24px; font-weight: 700; color: #000000;
+  letter-spacing: -0.03em; line-height: 1;
+}
+
+/* REPLACE the two existing .rp-kpi-slope blocks with this: */
+.rp-kpi-slope {
+  padding: 14px 14px 0;
+  gap: 6px;
+  overflow: hidden;
+}
+.rp-kpi-slope canvas {
+  display: block;
+  margin-top: auto;
+  margin-left: -14px;
+  width: calc(100% + 28px) !important;
+}
+
+/* ─── RIGHT PANEL INTERNALS ────────────────────────────────────── */
+.train-container { position:relative; width:100%; max-width:600px; margin:auto; top:20px; }
+.train-container img { position:relative; display:block; width:100%; margin-bottom:1rem; image-rendering:pixelated; }
+.train-container img.train-tracks { margin:0; padding:0; position:relative; top:-30px; left:-70px; width:130%; z-index:-1; }
+
+#front-label {
+  position: absolute !important; bottom: 10px !important; left: 12px !important;
+  top: auto !important; right: auto !important;
+  background: #000000 !important; color: #ffffff !important; border: none !important;
+  border-radius: 20px !important; padding: 6px 14px !important;
+  font-family: 'DM Sans', sans-serif !important; font-size: 11px !important;
+  font-weight: 700 !important; line-height: 1 !important; white-space: nowrap !important; z-index: 10 !important;
+}
+#back-label {
+  position: absolute !important; bottom: 10px !important; right: 12px !important;
+  top: auto !important; left: auto !important;
+  background: #f3f4f6 !important; color: #374151 !important; border: 1.5px solid #e5e7eb !important;
+  border-radius: 20px !important; padding: 6px 14px !important;
+  font-family: 'DM Sans', sans-serif !important; font-size: 11px !important;
+  font-weight: 700 !important; line-height: 1 !important; white-space: nowrap !important; z-index: 10 !important;
+}
+#reason-label { margin-top:0; text-align:center; color:#6b7280; font-size:12px; }
+
+.murs-table-container { width:100%; text-align:center; margin-top:20px; }
+.murs-table { width:80%; margin:0 auto; border-collapse:collapse; font-size:12px; }
+.murs-table th, .murs-table td { border:1px solid #e5e7eb; padding:7px 8px; text-align:center; }
+.murs-table th { background:#f9fafb; color:#9ca3af; font-size:11px; font-weight:600; text-transform:uppercase; }
+.train-prg-label { font-weight:700; font-size:13px; text-align:center; }
+.train-class-label { font-size:12px; color:#6b7280; text-align:center; }
+
+/* ─── CHART CONTROLS CARD ──────────────────────────────────────── */
+#chart-selector { margin-top: 0; }
+#chart-selector label {
+  font-size: 11px; font-weight: 600; color: #9ca3af;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  display: block; margin-bottom: 4px;
+}
+#chart-selector select,
+#mode-select {
+  appearance: none; -webkit-appearance: none;
+  width: 100%; padding: 8px 32px 8px 12px;
+  background: #f3f4f6 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239ca3af'/%3E%3C/svg%3E") no-repeat right 12px center;
+  border: 1.5px solid #e5e7eb; border-radius: 12px;
+  color: #111111; font-family: 'DM Sans', Helvetica, Arial, sans-serif;
+  font-size: 12px; font-weight: 400; cursor: pointer; transition: border-color 0.15s;
+}
+#chart-selector select:hover, #chart-selector select:focus,
+#mode-select:hover, #mode-select:focus { border-color: #6b7280; outline: none; }
+
+.charts-checkbox-group { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; }
+.charts-checkbox-group > div { display: contents; }
+.charts-checkbox-group label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: #374151; cursor: pointer; padding: 2px 0;
+}
+
+.map-mode-wrapper { display:flex; flex-wrap:wrap; gap:12px; align-items:center; font-size:12px; color:#374151; }
+.map-mode-wrapper label { display:flex; align-items:center; gap:5px; cursor:pointer; }
+input[type="radio"] { accent-color:#1d4ed8; cursor:pointer; }
+
+/* ─── CHARTS CONTAINER ─────────────────────────────────────────── */
+/*
+  #charts-container is a transparent flex wrapper only.
+  Each chart gets its OWN .rp-card — no nesting, no card-in-card.
+*/
+#charts-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Each individual chart card — same style as every other panel card */
+#charts-container .rp-card {
+  padding: 18px 20px 16px 20px !important;
+  margin: 0 !important;
+  overflow: visible !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07) !important;
+  border-radius: 22px !important;
+  background: #ffffff !important;
+}
+
+/* Ensure Plotly SVG isn't clipped by the card */
+#charts-container .rp-card > div {
+  overflow: visible !important;
+}
+
+/* Chart title row inside each card */
+.chart-card-title {
+  margin-bottom: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f3f4f6;
+  line-height: 1;
+}
+.chart-title-measure {
+  font-family: 'DM Sans', "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 15px; font-weight: 700; color: #111111; letter-spacing: 0.01em;
+}
+.chart-title-sep {
+  font-family: 'DM Sans', "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 13px; font-weight: 400; color: #d1d5db; margin: 0 2px;
+}
+.chart-title-car {
+  font-family: 'DM Sans', "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 13px; font-weight: 600; color: #6b7280;
+}
+
+/* ── HIDE the Plotly toolbar completely ────────────────────────── */
+.modebar-container {
+  display: none !important;
+}
+
+/* ─── WEATHER ──────────────────────────────────────────────────── */
+.rp-weather-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rp-weather-card { padding: 16px 16px 14px !important; display: flex; flex-direction: column; gap: 10px; }
+.rp-weather-card-header { display: flex; align-items: center; justify-content: space-between; }
+.rp-weather-period { font-family: 'DM Sans', "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 700; color: #000000; letter-spacing: 0.01em; }
+.rp-weather-body { font-size: 11.5px; color: #374151; line-height: 1.8; }
+.rp-source-row { margin-top: 8px; font-size: 10px; color: #9ca3af; }
+.rp-source-row a { color: #9ca3af; }
+.rp-source-row a:hover { color: #1d4ed8; }
+.weather-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.weather-col { background: #f9fafb; border-radius: 12px; padding: 12px; }
+.weather-col-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #9ca3af; margin-bottom: 8px; }
+.weather-col-body { font-size: 11.5px; color: #374151; line-height: 1.7; }
+
+/* ─── TRAIN FORMATION ──────────────────────────────────────────── */
+.tf-meta { display: flex; flex-direction: column; gap: 4px; margin-bottom: 0; }
+.tf-headcode { font-family: 'DM Sans', sans-serif; font-size: 22px; font-weight: 700; color: #000; letter-spacing: -0.02em; line-height: 1; }
+.tf-meta-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 2px; }
+.tf-times { font-family: 'DM Mono', monospace; font-size: 12px; color: #374151; }
+.tf-route { font-family: 'DM Sans', sans-serif; font-size: 12px; color: #374151; font-weight: 500; }
+.tf-diagram { font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-top: 1px; }
+.tf-fleet-row { display: flex; align-items: flex-end; width: 100%; gap: 0; margin-top: 12px; background: #f9fafb; border-radius: 14px; padding: 14px 10px 10px; }
+.tf-fleet-block { display: flex; flex-direction: column; align-items: center; text-align: center; flex: 1; }
+.tf-fleet-block img { height: 68px; width: auto; display: block; image-rendering: pixelated; }
+.tf-fleet-prg { font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 700; color: #111; margin-top: 6px; }
+.tf-fleet-class { font-family: 'DM Mono', monospace; font-size: 10px; color: #9ca3af; margin-top: 1px; }
+.tf-fleet-block.tf-highlighted { border: 2px solid #1d4ed8; background: #eff6ff; border-radius: 10px; padding: 4px 4px 6px; }
+
+/* ─── ROUTER POSITION ──────────────────────────────────────────── */
+.rp-router-diagram {
+  position: relative; margin-top: 14px;
+  background: #f9fafb; border-radius: 14px; overflow: hidden; padding: 12px 12px 44px;
+}
+.rp-router-diagram img {
+  width: 100%; height: auto; max-height: 80px;
+  image-rendering: pixelated; display: block; position: relative; z-index: 1;
+}
+.rp-router-diagram .rp-router-pill-left,
+.rp-router-diagram .rp-router-pill-right {
+  position: absolute !important; bottom: 10px !important; top: auto !important; z-index: 2;
+  font-family: 'DM Sans', sans-serif !important; font-size: 11px !important; font-weight: 700 !important;
+  padding: 6px 14px !important; border-radius: 20px !important; line-height: 1 !important; white-space: nowrap;
+}
+.rp-router-diagram .rp-router-pill-left { left: 12px !important; right: auto !important; background: #000 !important; color: #fff !important; border: none !important; }
+.rp-router-diagram .rp-router-pill-right { right: 12px !important; left: auto !important; background: #f3f4f6 !important; color: #374151 !important; border: 1.5px solid #e5e7eb !important; }
+
+.rp-reason { font-family: 'DM Sans', sans-serif; font-size: 12px; color: #6b7280; text-align: center; margin-top: 12px; min-height: 0; }
+.rp-reason:empty { display: none; }
+.rp-reason-therefore { font-weight: 700; color: #374151; }
+
+/* ─── EMPTY STATES ─────────────────────────────────────────────── */
+.rp-empty { color: #9ca3af; font-size: 12px; font-style: italic; }
+.rp-empty-card { display: flex; align-items: center; gap: 10px; background: #f9fafb; border-radius: 12px; padding: 14px; font-size: 12px; color: #6b7280; font-style: italic; }
+.rp-empty-icon { font-size: 18px; }
+
+/* ─── TRAIN FORMATION (alt) ────────────────────────────────────── */
+.rp-train-header { background: #f9fafb; border-radius: 14px; padding: 14px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px; }
+.rp-train-headcode { font-family: 'DM Sans', "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 20px; font-weight: 700; color: #000; letter-spacing: -0.01em; }
+.rp-train-meta { display: flex; gap: 16px; font-size: 12px; color: #374151; }
+.rp-train-diagram { font-size: 11px; color: #9ca3af; }
+.rp-fleet-row { display: flex; align-items: flex-end; gap: 0; width: 100%; }
+.rp-fleet-block { display: flex; flex-direction: column; align-items: center; text-align: center; flex: 1; }
+.rp-fleet-highlight { border: 2px solid #1d4ed8; background: #eff6ff; border-radius: 8px; box-shadow: 0 0 8px rgba(29,78,216,0.2); }
+.rp-fleet-prg { font-size: 11px; font-weight: 700; color: #111; margin-top: 4px; }
+.rp-fleet-class { font-size: 10px; color: #9ca3af; }
+
+/* ─── EVENT DETAIL ROW CARD ────────────────────────────────────── */
+.rp-event-details { padding: 14px 18px; }
+.rp-detail-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f3f4f6; font-size: 12px; }
+.rp-detail-row:last-of-type { border-bottom: none; }
+.rp-detail-label { color: #9ca3af; font-weight: 500; }
+.rp-detail-val { color: #111111; font-weight: 600; font-family: 'DM Sans', "Helvetica Neue", Helvetica, Arial, sans-serif; }
+
+/* ─── ROUTER BADGES ────────────────────────────────────────────── */
+.rp-router-lead-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.rp-router-badge { background: #000000; color: #ffffff; font-family: 'DM Sans', "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 700; padding: 6px 12px; border-radius: 20px; letter-spacing: 0.02em; }
+.rp-router-badge-secondary { background: #f3f4f6; color: #374151; }
+
+/* ─── MURS TABLE ───────────────────────────────────────────────── */
+.router-table th, .router-table td,
+.murs-table th, .murs-table td {
+  border: none !important;
+  border-bottom: 1px solid #f3f4f6 !important;
+  padding: 9px 8px; text-align: center;
+}
+.murs-table thead tr:first-child th {
+  background: #f9fafb; color: #9ca3af; font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  padding-top: 10px; padding-bottom: 10px; border-bottom: 2px solid #f3f4f6 !important;
+}
+.murs-table thead tr:last-child th {
+  background: #fff; color: #9ca3af; font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e5e7eb !important;
+}
+.murs-table tbody td { font-size: 13px; color: #111; font-weight: 500; }
+.murs-table tbody tr:last-child td { border-bottom: none !important; }
+.murs-table tbody tr:hover td { background: #f9fafb; }
+
+/* ─── LEFT PANEL KPI SQUARES ───────────────────────────────────── */
+.kpi-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.kpi-card {
+  background: #ffffff;
+  border-radius: 22px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+  aspect-ratio: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 14px;
+}
+
+.kpi-label { font-family: 'DM Sans', Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #111111; }
+
+/* ─── SLOPE ARROW ──────────────────────────────────────────────── */
+#slope-indicator { margin-top: auto; display: block; }
+
+/* ─── MISC ─────────────────────────────────────────────────────── */
+#weather-info, #event-info { font-size:12px; color:#374151; line-height:1.6; }
+a { color:#1d4ed8; text-decoration:none; }
+a:hover { text-decoration:underline; }
+::-webkit-scrollbar { width:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:#e5e7eb; border-radius:3px; }
+.chart { width: 100%; height: 300px; }
+
+.heatmap-toggle {
+  position: absolute;
+  z-index: 1000;
+  background: white;
+  padding: 6px 10px;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* positioned below the Leaflet layer-switcher (Transport/Topo/Satellite) */
+  top: 220px;
+  right: 10px;
+}
+
+/* ─── CHAIN INFO STRIP ─────────────────────────────────────────── */
+.rp-chain-strip {
+  display: flex;
+  gap: 8px;
+}
+.rp-chain-pill {
+  flex: 1;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.rp-chain-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #9ca3af;
+}
+.rp-chain-value {
+  font-family: 'DM Sans', "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: #000000;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}

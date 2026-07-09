@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+venv/
+.venv/
+low_adhesion_map/venv/
+low_adhesion_decoder/venv/
+
+# Local secrets and credentials
+*.pem
+*.key
+.env
+.env.*
+
+# Local runtime outputs
+progress_*.txt
+derived_murs_table.csv
+*.log
+
+# OS/editor files
+.DS_Store
+.idea/
+.vscode/
+frontend/data/chain_info.geojson

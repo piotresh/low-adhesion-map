@@ -1,0 +1,390 @@
+<!-- LOW ADHESION DASHBOARD -->
+<!DOCTYPE html>
+<html lang="en" data-theme="corporate">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Low Adhesion Map</title>
+
+    <!-- Leaflet + MarkerCluster (CDN) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css">
+
+    <!-- Typography -->
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <!-- App stylesheet -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- Preloaded fleet images, hidden; cloned into the train-formation panel on demand -->
+    <div id="fleet-images" style="display:none;">
+        <img src="images/165-2.png" data-fleet-id="165-2" class="train-photo">
+        <img src="images/165-3.png" data-fleet-id="165-3" class="train-photo">
+        <img src="images/168-3.png" data-fleet-id="168-3" class="train-photo">
+    </div>
+
+    <div id="container">
+
+        <!-- ══════════ LEFT COLUMN ══════════ -->
+        <div class="left-column">
+
+            <div class="logo-card">
+                <img src="newest_logo.png" alt="Logo">
+            </div>
+
+            <!-- KPI cards (slides / spins, 7-day rolling) -->
+            <div class="kpi-row">
+                <div class="kpi-card" id="kpi-slides" style="flex-direction:column; justify-content:space-between; align-items:flex-start; padding:14px;">
+                    <span style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; text-transform:uppercase; letter-spacing:0.1em; color:#9ca3af;">Slides · 7d</span>
+                    <span class="kpi-value" style="font-family:'DM Sans',sans-serif; font-size:32px; font-weight:700; color:#000; letter-spacing:-0.03em; line-height:1;">—</span>
+                    <span class="kpi-trend" style="font-family:'DM Sans',sans-serif; font-size:11px; font-weight:600; color:#9ca3af;">—</span>
+                </div>
+                <div class="kpi-card" id="kpi-spins" style="flex-direction:column; justify-content:space-between; align-items:flex-start; padding:14px;">
+                    <span style="font-family:'DM Mono',monospace; font-size:9px; font-weight:500; text-transform:uppercase; letter-spacing:0.1em; color:#9ca3af;">Spins · 7d</span>
+                    <span class="kpi-value" style="font-family:'DM Sans',sans-serif; font-size:32px; font-weight:700; color:#000; letter-spacing:-0.03em; line-height:1;">—</span>
+                    <span class="kpi-trend" style="font-family:'DM Sans',sans-serif; font-size:11px; font-weight:600; color:#9ca3af;">—</span>
+                </div>
+            </div>
+
+            <!-- Mode selection -->
+            <div class="card mini-group">
+                <div class="group-title">Mode Selection</div>
+                <select id="wheelMode" class="dashboard-input">
+                    <option value="wheel_slide" selected>Wheel Slide</option>
+                    <option value="wheel_spin">Wheel Spin</option>
+                    <option value="emergency_brakes">Emergency Brakes</option>
+                    <option value="train_stop">Train Stop</option>
+                </select>
+                <select id="timelineFilter" class="dashboard-input">
+                    <option value="date" selected>Filter: Date</option>
+                    <option value="brake_perf">Filter: Brake Perf</option>
+                </select>
+            </div>
+
+            <!-- Data options -->
+            <div class="card mini-group">
+                <div class="group-title">Data Options</div>
+                <select id="mursMode" class="dashboard-input">
+                    <option value="murs_min">MURS – Min</option>
+                    <option value="murs_avg" selected>MURS – Avg</option>
+                </select>
+                <label class="checkbox-row">
+                    <input type="checkbox" id="allAxlesSlide">
+                    All Axles Slide
+                </label>
+                <label class="checkbox-row">
+                    <input type="checkbox" id="showAdhesionTable">
+                    Show Adhesion Table
+                </label>
+            </div>
+
+            <!-- Export -->
+            <div class="card mini-group">
+                <div class="group-title">Export</div>
+                <button id="download-html" class="dashboard-button">↓ Download Map</button>
+                <button id="download-pqt"  class="dashboard-button">↓ Download PQT</button>
+                <button id="chain-master-btn" class="dashboard-button">⛓ Chains</button>
+                <button id="waymark-master-btn" class="dashboard-button">📍 Waymarks</button>
+                <button id="tga-master-btn" class="dashboard-button">💧 TGA Sites</button>
+                <button id="speed-master-btn" class="dashboard-button">🚦 Speed Limits</button>
+            </div>
+
+            <!-- Adhesion classification table (hidden by default) -->
+            <div id="adhesion-card" class="card mini-group" style="padding:0; overflow:hidden;">
+                <table id="adhesion-table">
+                    <tr><th>Index</th><th>μ</th><th>Condition</th><th>Meaning</th><th>Count</th><th>Display</th></tr>
+                    <tr class="row-excellent" data-condition="Excellent adhesion">
+                        <td>0–1</td><td>≥ 0.15</td><td>Excellent adhesion</td>
+                        <td>Dry, clean rail; full braking and traction available</td>
+                        <td>0</td><td><input type="checkbox" checked></td>
+                    </tr>
+                    <tr class="row-good" data-condition="Good adhesion">
+                        <td>2–3</td><td>0.10–0.15</td><td>Good adhesion</td>
+                        <td>Normal operations possible</td>
+                        <td>0</td><td><input type="checkbox" checked></td>
+                    </tr>
+                    <tr class="row-moderate" data-condition="Moderate adhesion">
+                        <td>4–5</td><td>0.08–0.10</td><td>Moderate adhesion</td>
+                        <td>Reduced braking performance</td>
+                        <td>0</td><td><input type="checkbox" checked></td>
+                    </tr>
+                    <tr class="row-poor" data-condition="Poor adhesion">
+                        <td>6–7</td><td>0.05–0.08</td><td>Poor adhesion</td>
+                        <td>Wheel slide likely; braking degraded</td>
+                        <td>0</td><td><input type="checkbox" checked></td>
+                    </tr>
+                    <tr class="row-verypoor" data-condition="Very poor adhesion">
+                        <td>8–9</td><td>0.03–0.05</td><td>Very poor adhesion</td>
+                        <td>Train braking strongly affected; mitigation needed</td>
+                        <td>0</td><td><input type="checkbox" checked></td>
+                    </tr>
+                    <tr class="row-extreme" data-condition="Extreme adhesion loss">
+                        <td>10</td><td>≤ 0.03</td><td>Extreme adhesion loss</td>
+                        <td>Severe braking loss; highest risk conditions</td>
+                        <td>0</td><td><input type="checkbox" checked></td>
+                    </tr>
+                    <tr class="row-none" data-condition="--">
+                        <td>--</td><td>--</td><td>No adhesion data</td>
+                        <td>Event has no min/avg data; No WSP activity</td>
+                        <td>0</td><td><input type="checkbox" checked></td>
+                    </tr>
+                </table>
+            </div>
+
+        </div>
+
+        <!-- ══════════ MAP AREA ══════════ -->
+        <div class="map-area">
+            <div id="map"></div>
+            <div id="timeline-overlay"></div>
+        </div>
+
+        <!-- ══════════ RIGHT PANEL (event details) ══════════ -->
+        <div id="right-panel">
+            <div id="panel-content">
+
+                <!-- ── Event header ── -->
+                <div class="rp-event-header">
+                    <div class="rp-event-meta">
+                        <div class="rp-event-eyebrow">Active Event</div>
+                        <div id="event-title-label" class="rp-event-title">Wheel Slide</div>
+                        <div id="event-time-label"  class="rp-event-time">—</div>
+                    </div>
+                    <div id="close-panel">✕</div>
+                </div>
+
+                <!-- ── Four KPI cards ── -->
+                <div class="rp-kpi-row">
+                    <div class="rp-kpi-card">
+                        <div class="rp-kpi-label">Duration</div>
+                        <div class="rp-kpi-value" id="detail-duration">—</div>
+                    </div>
+                    <div class="rp-kpi-card">
+                        <div class="rp-kpi-label">Slide Dist.</div>
+                        <div class="rp-kpi-value" id="detail-distance">—</div>
+                    </div>
+                    <div class="rp-kpi-card">
+                        <div class="rp-kpi-label">Elev. Δ</div>
+                        <div class="rp-kpi-value" id="detail-elevation">—</div>
+                    </div>
+                    <div class="rp-kpi-card rp-kpi-slope" id="slope-card">
+                        <div class="rp-kpi-label">Slope</div>
+                        <div class="rp-kpi-value" id="detail-slope">—</div>
+                        <canvas id="slope-canvas"></canvas>
+                    </div>
+                </div>
+
+                <div id="event-info" style="display:none;"></div>
+
+                <!-- NEW: compact inline pill strip -->
+                <div class="rp-chain-strip">
+                    <div class="rp-chain-pill">
+                        <span class="rp-chain-label">ELR</span>
+                        <span class="rp-chain-value" id="chain-elr">—</span>
+                    </div>
+                    <div class="rp-chain-pill">
+                        <span class="rp-chain-label">Mile</span>
+                        <span class="rp-chain-value" id="chain-mile">—</span>
+                    </div>
+                    <div class="rp-chain-pill">
+                        <span class="rp-chain-label">Chain</span>
+                        <span class="rp-chain-value" id="chain-chain">—</span>
+                    </div>
+                </div>
+
+                <!-- ── Weather cards ── -->
+                <div class="rp-weather-row">
+                    <div class="rp-card rp-weather-card" id="weather-current">
+                        <div class="rp-weather-card-header">
+                            <span class="rp-weather-period">Current Hour</span>
+                            <a class="rp-source" href="https://open-meteo.com/en/docs/historical-weather-api" target="_blank" rel="noopener noreferrer">Open Meteo</a>
+                        </div>
+                        <div id="weather-current-body" class="rp-weather-body"></div>
+                    </div>
+                    <div class="rp-card rp-weather-card" id="weather-previous">
+                        <div class="rp-weather-card-header">
+                            <span class="rp-weather-period">Previous Hour</span>
+                        </div>
+                        <div id="weather-previous-body" class="rp-weather-body"></div>
+                    </div>
+                </div>
+                <div id="weather-info" style="display:none;"></div>
+
+                <!-- ── Train formation ── -->
+                <div class="rp-card">
+                    <div class="rp-card-header">
+                        <span class="rp-title">Train Formation</span>
+                        <a class="rp-source" href="https://raildata.org.uk/dashboard/dataProduct/P-3a2ccb58-e1f9-416b-a40e-0614d0269ecf/overview" target="_blank" rel="noopener noreferrer">Network Rail</a>
+                    </div>
+                    <div id="train-formation-meta"></div>
+                    <div id="train-formation-fleet" class="tf-fleet-row"></div>
+                    <div id="train-slide-container"></div>
+                </div>
+
+                <!-- ── Router position ── -->
+                <div class="rp-card">
+                    <div class="rp-card-header">
+                        <span class="rp-title">Router Position</span>
+                    </div>
+
+                    <table class="murs-table" style="width:100%; margin-top:4px;">
+                        <thead>
+                            <tr>
+                                <th colspan="3" style="text-align:center;">Router 5</th>
+                                <th colspan="3" style="text-align:center;">Router 6</th>
+                            </tr>
+                            <tr>
+                                <th>CAB Active</th><th>Forward</th><th>Reverse</th>
+                                <th>CAB Active</th><th>Forward</th><th>Reverse</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td id="router5-cab">--</td>
+                                <td id="router5-forward">--</td>
+                                <td id="router5-reverse">--</td>
+                                <td id="router6-cab">--</td>
+                                <td id="router6-forward">--</td>
+                                <td id="router6-reverse">--</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="rp-reason" id="reason-label"></div>
+
+                    <div class="rp-router-diagram">
+                        <img id="router-train-img" src="" alt="" style="display:none;">
+                        <div class="rp-router-pill-left"  id="front-label"></div>
+                        <div class="rp-router-pill-right" id="back-label"></div>
+                    </div>
+                </div>
+
+                <!-- ── MURS table ── -->
+                <div class="rp-card">
+                    <div class="rp-card-header">
+                        <span class="rp-title">Axle Data (MURS)</span>
+                    </div>
+                    <div class="murs-table-container" style="margin-top:0;">
+                        <table class="murs-table" style="width:100%;">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th colspan="3" style="text-align:center;">Lead Car</th>
+                                    <th colspan="3" style="text-align:center;">Following Car</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <th></th>
+                                    <th>Axle 1</th><th>Axle 2</th><th>Axle 3-4</th>
+                                    <th>Axle 5-6</th><th>Axle 7</th><th>Axle 8</th>
+                                </tr>
+                                <tr>
+                                    <td><strong>Min (Mu)</strong></td>
+                                    <td id="axle1-min">--</td><td id="axle2-min">--</td><td id="axle3-4-min">--</td>
+                                    <td id="axle5-6-min">--</td><td id="axle7-min">--</td><td id="axle8-min">--</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Average (Mu)</strong></td>
+                                    <td id="axle1-avg">--</td><td id="axle2-avg">--</td><td id="axle3-4-avg">--</td>
+                                    <td id="axle5-6-avg">--</td><td id="axle7-avg">--</td><td id="axle8-avg">--</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Weight (kg)</strong></td>
+                                    <td colspan="3" id="weight-lead">--</td>
+                                    <td colspan="3" id="weight-follow">--</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Last Stable BCP</strong></td>
+                                    <td id="axle1-time">--</td><td id="axle2-time">--</td><td id="axle3-4-time">--</td>
+                                    <td id="axle5-6-time">--</td><td id="axle7-time">--</td><td id="axle8-time">--</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ── Charts ── -->
+                <div class="rp-card">
+                    <div class="rp-card-header">
+                        <span class="rp-title">Charts</span>
+                    </div>
+
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <div id="chart-selector">
+                            <select id="mode-select" class="dashboard-input">
+                                <option value="slide">Wheel Slide</option>
+                                <option value="spin">Wheel Spin</option>
+                                <option value="brake_performance">Brake Performance</option>
+                                <option value="VVPOP">WSP Dump Valve</option>
+                            </select>
+                        </div>
+
+                        <div class="map-mode-wrapper">
+                            Map Display:
+                            <label><input type="radio" name="map-mode" value="brakedemand"> Brake Demand</label>
+                            <label><input type="radio" name="map-mode" value="off" checked> Off</label>
+                        </div>
+
+                        <div class="charts-checkbox-group">
+                            <div id="brakedemand-checkboxes" style="display:contents;">
+                                <label class="checkbox-row">
+                                    <input type="checkbox" id="brakedemand-chart" value="chart" checked>
+                                    Brake Demand (Chart)
+                                </label>
+                            </div>
+                            <div id="chart-checkboxes" style="display:contents;">
+                                <label class="checkbox-row"><input type="checkbox" value="WSP" checked> WSP</label>
+                                <label class="checkbox-row"><input type="checkbox" value="BCP" checked> BCP</label>
+                                <label class="checkbox-row"><input type="checkbox" value="MURS_derived_rolling" checked> MURS</label>
+                            </div>
+                            <div id="router-checkboxes" style="display:contents;">
+                                <label class="checkbox-row"><input type="checkbox" value="front" checked> Lead Car</label>
+                                <label class="checkbox-row"><input type="checkbox" value="back"  checked> Following Car</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="charts-container"></div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ═══ External dependencies (CDN) ═══ -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/rbush@3.0.1/rbush.min.js"></script>
+
+    <!-- ═══ App scripts (load order matters — no bundler) ═══ -->
+    <!-- APP SCRIPTS START -->
+    <script src="js/config.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/map/map_setup.js"></script>
+    <script src="js/map/brake_layer.js"></script>
+    <script src="js/map/adhesion_layer.js"></script>
+    <script src="js/map/heatmap.js"></script>
+    <script src="js/map/map_render.js"></script>
+    <script src="js/map/chain_overlay.js"></script>
+    <script src="js/map/tga_overlay.js"></script>
+    <script src="js/map/speed_overlay.js"></script>
+    <script src="js/timeline.js"></script>
+    <script src="js/panel/event_info.js"></script>
+    <script src="js/panel/router_charts.js"></script>
+    <script src="js/controls.js"></script>
+    <script src="js/api.js"></script>
+    <script src="app.js"></script>
+    <!-- APP SCRIPTS END -->
+</body>
+</html>

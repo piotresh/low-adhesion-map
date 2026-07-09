@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+orjson
+pandas
+numpy
+snowflake-connector-python
+requests
+urllib3
+pyarrow
